@@ -11,9 +11,11 @@ use Hash;
 use Str;
 use Session;
 use Carbon\Carbon;
+use JWTAuth;
 
 // Model Database
 use App\Models\MsStaffModel;
+use App\Models\MsTokenAuthorizationModel;
 
 class AuthenticationController extends Controller
 {
@@ -45,6 +47,7 @@ class AuthenticationController extends Controller
             $validator = Validator::make($request->all(), [
                 'tmp_username' => 'required',
                 'tmp_password' => 'required',
+                'grecaptcha' => 'required|captcha'
             ]);
 
             if ($validator->fails())
@@ -57,21 +60,40 @@ class AuthenticationController extends Controller
                 {
                     // Cek Data Dalam Database
                     $checkExistingData =  MsStaffModel::where('admin_username', $request->tmp_username)->first();
+
                     if($checkExistingData != null)
                     {
                         if(password_verify($request->tmp_password, $checkExistingData->admin_password))
                         {
                             if($checkExistingData->admin_status == 1 && $checkExistingData->admin_visible == 1)
                             {
-                                $checkExistingData->last_login = Carbon::now('Asia/Jakarta');
-                                $checkExistingData->save();
+                                DB::beginTransaction();
+                                try {
+                                    $checkExistingData->last_login = Carbon::now('Asia/Jakarta');
+                                    $checkExistingData->save();
+                                    
+                                    $tmp_userToken = bin2hex(openssl_random_pseudo_bytes(16));
 
-                                Session::put('userLogin', $checkExistingData);
+                                    $AddTokenUser = new MsTokenAuthorizationModel();
+                                    $AddTokenUser->id_user = $checkExistingData->id;
+                                    $AddTokenUser->token_authorization = $tmp_userToken;
+                                    $AddTokenUser->token_status = 1;
+                                    $AddTokenUser->save();
 
-                                $status = true;
-                                $response_code = "RC200";
-                                $message = "Anda Berhasil Login, Selamat Datang.";
+                                    DB::commit();
 
+                                    Session::put('userLogin', $checkExistingData);
+                                    Session::put('userToken', $tmp_userToken);
+
+                                    $status = true;
+                                    $response_code = "RC200";
+                                    $message = "Anda Berhasil Login, Selamat Datang.";
+                                } catch (\Throwable $error) {
+                                    DB::rollback();
+                                    $status = false;
+                                    $response_code = "RC400";
+                                    $message = "Tidak Dapat Login Kedalam Sistem";
+                                }
                             }else{
                                 $status = false;
                                 $response_code = "RC401";
@@ -145,10 +167,8 @@ class AuthenticationController extends Controller
 
                     if($checkExistingData == null)
                     {
-                        // dd("SA-".random_int(1000, 9999)."-".time());                        
+                        DB::beginTransaction();                       
                         try {
-                            DB::beginTransaction();
-
                             $AddUser = new MsStaffModel();
 
                             $AddUser->admin_id = "SA-".random_int(1000, 9999)."-".time();
@@ -212,6 +232,14 @@ class AuthenticationController extends Controller
 
     public function logoutAct()
     {
+        $UserToken = session()->get('userToken');
+        if(isset($UserToken))
+        {
+            $checkUserToken =  MsTokenAuthorizationModel::where('token_authorization', $UserToken)->first();
+            $checkUserToken->token_status = 0;
+            $checkUserToken->save();
+        }       
+
         Session::flush();
         return redirect()->route('auth.login');
     }

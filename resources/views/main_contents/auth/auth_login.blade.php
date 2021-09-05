@@ -55,15 +55,16 @@
                                     <label class="text-bold-600" for="exampleInputPassword1">Password :</label>
                                     <input type="password" class="form-control" id="form_password" name="form_password" placeholder="Password" required>
                                 </div>
-                                <div class="form-group d-flex flex-md-row flex-column justify-content-between align-items-center">
-                                    <div class="text-left">
-                                        <div class="checkbox checkbox-sm">
-                                            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-                                            <label class="checkboxsmall" for="exampleCheck1"><small>Keep me logged
-                                                    in</small></label>
-                                        </div>
+                                <div class="form-group">
+                                    
+                                </div>
+                                <div class="form-row d-flex flex-md-row flex-column justify-content-between align-items-center">
+                                    <div class="form-group col-md-6 col-sm-12 col-12 mb-50">
+                                        {!! NoCaptcha::display() !!}
                                     </div>
-                                    <div class="text-right"><a href="{{ route('auth.forgot_password') }}" class="card-link"><small>Forgot Password?</small></a></div>
+                                    <div class="form-group col-md-6 col-sm-12 col-12 mb-50">
+                                        <div class="text-right"><a href="{{ route('auth.forgot_password') }}" class="card-link"><small>Forgot Password?</small></a></div>
+                                    </div>
                                 </div>
                                 <button type="submit" class="btn btn-primary glow w-100 position-relative">Login<i id="icon-arrow" class="bx bx-right-arrow-alt"></i></button>
                             </form>
